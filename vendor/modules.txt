@@ -12,7 +12,6 @@ github.com/go-gl/glfw/v3.3/glfw/glfw/src
 github.com/gopherjs/gopherjs/js
 # github.com/goxjs/glfw v0.0.0-20191126052801-d2efb5f20838
 ## explicit
-github.com/goxjs/glfw
 # honnef.co/go/js/dom v0.0.0-20210725211120-f030747120f2
 ## explicit
 honnef.co/go/js/dom

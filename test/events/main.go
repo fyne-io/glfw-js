@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/goxjs/glfw"
+	"github.com/fyne-io/glfw-js"
 )
 
 var counter int = -1

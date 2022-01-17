@@ -14,8 +14,8 @@ Installation
 ------------
 
 ```bash
-go get -u github.com/goxjs/glfw
-GOARCH=js go get -u -d github.com/goxjs/glfw
+go get -u github.com/fyne-io/glfw-js
+GOARCH=js go get -u -d github.com/fyne-io/glfw-js
 ```
 
 Directories
