@@ -151,8 +151,8 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		}
 
 		if w.charCallback != nil {
-			if len(ke.key) == 1 {
-				keyRune := []rune(ke.key)
+			if len(ke.Key) == 1 {
+				keyRune := []rune(ke.Key)
 				go w.charCallback(w, keyRune[0])
 			}
 		}
