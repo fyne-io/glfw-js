@@ -101,8 +101,8 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		// HACK: Go fullscreen?
 		w.devicePixelRatio = js.Global().Get("devicePixelRatio").Float()
 		widthScaled, heightScaled := w.GetSize()
-		canvas.Set("width", widthScaled)   // Nearest non-negative int.
-		canvas.Set("height", heightScaled) // Nearest non-negative int.
+		canvas.Set("width", widthScaled)
+		canvas.Set("height", heightScaled)
 
 		if w.framebufferSizeCallback != nil {
 			// TODO: Callbacks may be blocking so they need to happen asyncronously. However,
