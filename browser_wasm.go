@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"runtime"
+	"strings"
 	"syscall/js"
 )
 
@@ -103,6 +104,8 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		}
 	}
 
+	w.userAgent = js.Global().Get("window").Get("navigator").Get("userAgent").String()
+
 	js.Global().Call("addEventListener", "resize", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		// HACK: Go fullscreen?
 		w.devicePixelRatio = js.Global().Get("devicePixelRatio").Float()
@@ -139,10 +142,11 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 			w.keys = append(w.keys, make([]Action, neededSize-len(w.keys))...)
 		}
 		w.keys[key] = action
-
+		mods := toModifierKey(ke)
+		if strings.Contains(strings.ToLower(w.userAgent), "mac") && mods == ModSuper {
+			mods = ModControl
+		}
 		if w.keyCallback != nil {
-			mods := toModifierKey(ke)
-
 			go w.keyCallback(w, key, -1, action, mods)
 		}
 
@@ -342,6 +346,8 @@ type Window struct {
 	charCallback            CharCallback
 	framebufferSizeCallback FramebufferSizeCallback
 	sizeCallback            SizeCallback
+
+	userAgent string
 
 	touches js.Value // Hacky mouse-emulation-via-touch.
 }

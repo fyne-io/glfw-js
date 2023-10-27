@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"runtime"
+	"strings"
 
 	"github.com/gopherjs/gopherjs/js"
 	"honnef.co/go/js/dom"
@@ -111,6 +112,7 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		}
 	}
 
+	w.userAgent = js.Global.Get("window").Get("navigator").Get("userAgent").String()
 	dom.GetWindow().AddEventListener("resize", false, func(event dom.Event) {
 		// HACK: Go fullscreen?
 		width := dom.GetWindow().InnerWidth()
@@ -149,10 +151,11 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 			w.keys = append(w.keys, make([]Action, neededSize-len(w.keys))...)
 		}
 		w.keys[key] = action
-
+		mods := toModifierKey(ke)
+		if strings.Contains(strings.ToLower(w.userAgent), "mac") && mods == ModSuper {
+			mods = ModControl
+		}
 		if w.keyCallback != nil {
-			mods := toModifierKey(ke)
-
 			go w.keyCallback(w, key, -1, action, mods)
 		}
 
@@ -337,6 +340,8 @@ type Window struct {
 	scrollCallback          ScrollCallback
 	framebufferSizeCallback FramebufferSizeCallback
 	sizeCallback            SizeCallback
+
+	userAgent string
 
 	touches *js.Object // Hacky mouse-emulation-via-touch.
 }
