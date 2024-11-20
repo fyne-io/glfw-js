@@ -50,8 +50,8 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 	height := js.Global().Get("innerHeight").Int()
 
 	devicePixelRatio := js.Global().Get("devicePixelRatio").Float()
-	canvas.Set("width", width)
-	canvas.Set("height", height)
+	canvas.Set("width", int(float64(width)*devicePixelRatio+0.5))   // Nearest non-negative int.
+	canvas.Set("height", int(float64(height)*devicePixelRatio+0.5)) // Nearest non-negative int.
 
 	canvas.Get("style").Call("setProperty", "width", "100vw")
 	canvas.Get("style").Call("setProperty", "height", "100dvh")
