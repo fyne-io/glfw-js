@@ -53,7 +53,8 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 	canvas.Set("width", int(float64(width)*devicePixelRatio+0.5))   // Nearest non-negative int.
 	canvas.Set("height", int(float64(height)*devicePixelRatio+0.5)) // Nearest non-negative int.
 
-	element.Get("style").Set("cssText", `
+	// Prefer dynamic viewport units (dvw and dvh) but fallback to vw and vh.
+	canvas.Get("style").Set("cssText", `
  		width: 100vw;
    		width: 100dvw;
  		height: 100vh;
