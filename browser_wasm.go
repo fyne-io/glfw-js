@@ -54,7 +54,7 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 	canvas.Set("height", height)
 
 	canvas.Get("style").Call("setProperty", "width", "100vw")
-	canvas.Get("style").Call("setProperty", "height", "100%")
+	canvas.Get("style").Call("setProperty", "height", "100dvh")
 
 	document.Set("title", title)
 
