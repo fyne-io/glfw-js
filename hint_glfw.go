@@ -42,6 +42,10 @@ const (
 	FailIfMajorPerformanceCaveat
 )
 
+const (
+	NoAPI int = glfw.NoAPI
+)
+
 // noopHint is ignored.
 const noopHint Hint = -1
 
