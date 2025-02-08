@@ -30,6 +30,7 @@ func getTime() float64 {
 	return time.Since(startedProcess).Seconds()
 }
 
+//gocyclo:ignore
 func keyString(key glfw.Key) string {
 	switch key {
 	// Printable keys.
