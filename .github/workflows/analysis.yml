@@ -20,7 +20,6 @@ jobs:
         go install golang.org/x/tools/cmd/goimports@latest
         go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
         go install honnef.co/go/tools/cmd/staticcheck@latest
-        go install github.com/mattn/goveralls@latest
         go install lucor.dev/lian@latest
 
     - name: Get dependencies
