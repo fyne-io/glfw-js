@@ -31,6 +31,7 @@ func Terminate() error {
 	return nil
 }
 
+//gocyclo:ignore
 func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Window, error) {
 	// THINK: Consider https://developer.mozilla.org/en-US/docs/Web/API/Window.open?
 	body := document.Get("body")
@@ -104,6 +105,20 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 			w.requestFullscreen = true
 		}
 	}
+
+	js.Global().Call("addEventListener", "focus", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		if w.focusCallback != nil {
+			w.focusCallback(w, true)
+		}
+		return nil
+	}))
+
+	js.Global().Call("addEventListener", "blur", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		if w.focusCallback != nil {
+			w.focusCallback(w, false)
+		}
+		return nil
+	}))
 
 	js.Global().Call("addEventListener", "resize", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		// HACK: Go fullscreen?
@@ -299,6 +314,13 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		document.AddEventListener("touchmove", false, touchHandler)
 		document.AddEventListener("touchend", false, touchHandler)*/
 
+	document.Call("addEventListener", "beforeUnload", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		if w.closeCallback != nil {
+			w.closeCallback(w)
+		}
+		return nil
+	}))
+
 	// Request first animation frame.
 	js.Global().Call("requestAnimationFrame", animationFrameCallback)
 
@@ -342,6 +364,8 @@ type Window struct {
 	charCallback            CharCallback
 	framebufferSizeCallback FramebufferSizeCallback
 	sizeCallback            SizeCallback
+	focusCallback           FocusCallback
+	closeCallback           CloseCallback
 
 	touches js.Value // Hacky mouse-emulation-via-touch.
 }
@@ -993,10 +1017,9 @@ func (w *Window) Destroy() {
 type CloseCallback func(w *Window)
 
 func (w *Window) SetCloseCallback(cbfun CloseCallback) (previous CloseCallback) {
-	// TODO: Implement.
-
-	// TODO: Handle previous.
-	return nil
+	previous = w.closeCallback
+	w.closeCallback = cbfun
+	return previous
 }
 
 type RefreshCallback func(w *Window)
@@ -1047,10 +1070,9 @@ func (w *Window) SetPosCallback(cbfun PosCallback) (previous PosCallback) {
 type FocusCallback func(w *Window, focused bool)
 
 func (w *Window) SetFocusCallback(cbfun FocusCallback) (previous FocusCallback) {
-	// TODO: Implement.
-
-	// TODO: Handle previous.
-	return nil
+	previous = w.focusCallback
+	w.focusCallback = cbfun
+	return previous
 }
 
 type IconifyCallback func(w *Window, iconified bool)
