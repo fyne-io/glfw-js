@@ -31,6 +31,7 @@ func Terminate() error {
 	return nil
 }
 
+//gocyclo:ignore
 func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Window, error) {
 	// THINK: Consider https://developer.mozilla.org/en-US/docs/Web/API/Window.open?
 	body := document.Get("body")
