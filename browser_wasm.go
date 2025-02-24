@@ -964,30 +964,10 @@ func DefaultWindowHints() {
 }
 
 func (w *Window) SetClipboardString(str string) {
-	// Set the clipboard content from the input str
-	js.Global().Get("navigator").Get("clipboard").Call("writeText", str)
+	SetClipboardString(str)
 }
-func (w *Window) GetClipboardString() (string, error) {
-	// Get the clipboard object.
-	clipboard := js.Global().Get("navigator").Get("clipboard")
-	clipboardChan := make(chan js.Value)
-	// Call the `readText()` function and send the result to the channel
-	clipboard.Call("readText").Call("then", js.FuncOf(func(this js.Value, p []js.Value) interface{} {
-		clipboardContent := p[0]
-		clipboardChan <- clipboardContent
-		return nil
-	})).Call("catch", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		clipboardChan <- js.ValueOf(nil)
-		return nil
-	}))
-	// Get the js.Value of the clipboard text from the channel
-	result := <-clipboardChan
-	if result.Truthy() {
-		// Convert the value to a string and return the value
-		text := result.String()
-		return text, nil
-	}
-	return "", errors.New("Failed to get clipboard text")
+func (w *Window) GetClipboardString() string {
+	return GetClipboardString()
 }
 
 func (w *Window) SetTitle(title string) {
