@@ -10,24 +10,24 @@ import (
 //
 // This function may only be called from the main thread.
 func GetClipboardString() string {
-	clipboard := js.Global().Get("navigator").Get("clipboard")
-	clipboardChan := make(chan js.Value)
+	text := make(chan string)
 
+	clipboard := js.Global().Get("navigator").Get("clipboard")
 	clipboard.Call("readText").Call("then", js.FuncOf(func(this js.Value, p []js.Value) interface{} {
-		clipboardContent := p[0]
-		clipboardChan <- clipboardContent
+		content := p[0]
+		if !content.Truthy() {
+			text <- ""
+			return nil
+		}
+
+		text <- content.String()
 		return nil
 	})).Call("catch", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		clipboardChan <- js.ValueOf(nil)
+		text <- ""
 		return nil
 	}))
 
-	result := <-clipboardChan
-	if !result.Truthy() {
-		return ""
-	}
-
-	return result.String()
+	return <-text
 }
 
 // SetClipboardString sets the system clipboard to the specified UTF-8 encoded string.
