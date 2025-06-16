@@ -106,21 +106,21 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		}
 	}
 
-	js.Global().Call("addEventListener", "focus", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	js.Global().Call("addEventListener", "focus", js.FuncOf(func(this js.Value, args []js.Value) any {
 		if w.focusCallback != nil {
 			w.focusCallback(w, true)
 		}
 		return nil
 	}))
 
-	js.Global().Call("addEventListener", "blur", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	js.Global().Call("addEventListener", "blur", js.FuncOf(func(this js.Value, args []js.Value) any {
 		if w.focusCallback != nil {
 			w.focusCallback(w, false)
 		}
 		return nil
 	}))
 
-	js.Global().Call("addEventListener", "resize", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	js.Global().Call("addEventListener", "resize", js.FuncOf(func(this js.Value, args []js.Value) any {
 		// HACK: Go fullscreen?
 		w.devicePixelRatio = js.Global().Get("devicePixelRatio").Float()
 		widthScaled, heightScaled := w.GetSize()
@@ -139,7 +139,7 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		return nil
 	}))
 
-	document.Call("addEventListener", "keydown", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	document.Call("addEventListener", "keydown", js.FuncOf(func(this js.Value, args []js.Value) any {
 		ke := args[0]
 		w.goFullscreenIfRequested()
 
@@ -172,7 +172,7 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		ke.Call("preventDefault")
 		return nil
 	}))
-	document.Call("addEventListener", "keyup", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	document.Call("addEventListener", "keyup", js.FuncOf(func(this js.Value, args []js.Value) any {
 		ke := args[0]
 		w.goFullscreenIfRequested()
 
@@ -194,7 +194,7 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		ke.Call("preventDefault")
 		return nil
 	}))
-	document.Call("addEventListener", "mousedown", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	document.Call("addEventListener", "mousedown", js.FuncOf(func(this js.Value, args []js.Value) any {
 		me := args[0]
 		w.goFullscreenIfRequested()
 
@@ -211,7 +211,7 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		me.Call("preventDefault")
 		return nil
 	}))
-	document.Call("addEventListener", "mouseup", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	document.Call("addEventListener", "mouseup", js.FuncOf(func(this js.Value, args []js.Value) any {
 		me := args[0]
 		w.goFullscreenIfRequested()
 
@@ -228,13 +228,13 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		me.Call("preventDefault")
 		return nil
 	}))
-	document.Call("addEventListener", "contextmenu", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	document.Call("addEventListener", "contextmenu", js.FuncOf(func(this js.Value, args []js.Value) any {
 		me := args[0]
 		me.Call("preventDefault")
 		return nil
 	}))
 
-	document.Call("addEventListener", "mousemove", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	document.Call("addEventListener", "mousemove", js.FuncOf(func(this js.Value, args []js.Value) any {
 		me := args[0]
 		var movementX, movementY float64
 		if !w.missing.pointerLock {
@@ -257,7 +257,7 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		me.Call("preventDefault")
 		return nil
 	}))
-	document.Call("addEventListener", "wheel", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	document.Call("addEventListener", "wheel", js.FuncOf(func(this js.Value, args []js.Value) any {
 		we := args[0]
 
 		deltaX := we.Get("deltaX").Float()
@@ -314,7 +314,7 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		document.AddEventListener("touchmove", false, touchHandler)
 		document.AddEventListener("touchend", false, touchHandler)*/
 
-	document.Call("addEventListener", "beforeUnload", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	document.Call("addEventListener", "beforeUnload", js.FuncOf(func(this js.Value, args []js.Value) any {
 		if w.closeCallback != nil {
 			w.closeCallback(w)
 		}
@@ -378,7 +378,7 @@ func (w *Window) SetSize(width, height int) {
 	fmt.Println("not implemented: SetSize:", width, height)
 }
 
-func (w *Window) SetIcon(images interface{}) {
+func (w *Window) SetIcon(images any) {
 	// images is actually of type []image.Image, but no need to import image until we actually do something with it
 	fmt.Println("not implemented: SetIcon")
 }
@@ -534,7 +534,7 @@ func (w *Window) SwapBuffers() error {
 
 var animationFrameChan = make(chan struct{}, 1)
 
-var animationFrameCallback = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+var animationFrameCallback = js.FuncOf(func(this js.Value, args []js.Value) any {
 	animationFrameChan <- struct{}{}
 
 	return nil
@@ -592,8 +592,10 @@ func (w *Window) GetInputMode(mode InputMode) int {
 	}
 }
 
-var ErrInvalidParameter = errors.New("invalid parameter")
-var ErrInvalidValue = errors.New("invalid value")
+var (
+	ErrInvalidParameter = errors.New("invalid parameter")
+	ErrInvalidValue     = errors.New("invalid value")
+)
 
 func (w *Window) SetInputMode(mode InputMode, value int) {
 	switch mode {
@@ -966,6 +968,7 @@ func DefaultWindowHints() {
 func (w *Window) SetClipboardString(str string) {
 	SetClipboardString(str)
 }
+
 func (w *Window) GetClipboardString() string {
 	return GetClipboardString()
 }
