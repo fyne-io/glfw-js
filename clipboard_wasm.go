@@ -2,9 +2,9 @@
 
 package glfw
 
-import (
-	"syscall/js"
-)
+import "syscall/js"
+
+var clipboard = js.Global().Get("navigator").Get("clipboard")
 
 // GetClipboardString returns the contents of the system clipboard, if it contains or is convertible to a UTF-8 encoded string.
 //
@@ -12,8 +12,7 @@ import (
 func GetClipboardString() string {
 	text := make(chan string)
 
-	clipboard := js.Global().Get("navigator").Get("clipboard")
-	clipboard.Call("readText").Call("then", js.FuncOf(func(this js.Value, p []js.Value) interface{} {
+	clipboard.Call("readText").Call("then", js.FuncOf(func(this js.Value, p []js.Value) any {
 		content := p[0]
 		if !content.Truthy() {
 			text <- ""
@@ -22,7 +21,7 @@ func GetClipboardString() string {
 
 		text <- content.String()
 		return nil
-	})).Call("catch", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	})).Call("catch", js.FuncOf(func(this js.Value, args []js.Value) any {
 		text <- ""
 		return nil
 	}))
@@ -34,5 +33,5 @@ func GetClipboardString() string {
 //
 // This function may only be called from the main thread.
 func SetClipboardString(str string) {
-	js.Global().Get("navigator").Get("clipboard").Call("writeText", str)
+	clipboard.Call("writeText", str)
 }

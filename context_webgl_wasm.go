@@ -12,7 +12,7 @@ func newContext(canvas js.Value, ca *contextAttributes) (context js.Value, err e
 		return js.Value{}, errors.New("Your browser doesn't appear to support WebGL.")
 	}
 
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		"alpha":                           ca.Alpha,
 		"depth":                           ca.Depth,
 		"stencil":                         ca.Stencil,

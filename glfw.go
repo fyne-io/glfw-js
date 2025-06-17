@@ -10,7 +10,7 @@ package glfw
 type ContextWatcher interface {
 	// OnMakeCurrent is called after a context is made current.
 	// context is is a platform-specific representation of the context, or nil if unavailable.
-	OnMakeCurrent(context interface{})
+	OnMakeCurrent(context any)
 
 	// OnDetach is called after the current context is detached.
 	OnDetach()
