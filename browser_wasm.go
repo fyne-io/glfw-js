@@ -55,10 +55,12 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 	canvas.Set("height", int(float64(height)*devicePixelRatio+0.5)) // Nearest non-negative int.
 
 	// Use dvw and dvh if supported; otherwise, fall back to vw and vh.
-	canvas.Get("style").Call("setProperty", "width", "100vw")
-	canvas.Get("style").Call("setProperty", "width", "100dvw")
-	canvas.Get("style").Call("setProperty", "height", "100vh")
-	canvas.Get("style").Call("setProperty", "height", "100dvh")
+	style := canvas.Get("style")
+	setProperty := style.Get("setProperty").Call("bind", style)
+	setProperty.Invoke("width", "100vw")
+	setProperty.Invoke("width", "100dvw")
+	setProperty.Invoke("height", "100vh")
+	setProperty.Invoke("height", "100dvh")
 
 	document.Set("title", title)
 
@@ -106,21 +108,23 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		}
 	}
 
-	js.Global().Call("addEventListener", "focus", js.FuncOf(func(this js.Value, args []js.Value) any {
+	addGlobalEventListener := js.Global().Get("addEventListener").Call("bind", js.Global())
+
+	addGlobalEventListener.Invoke("focus", js.FuncOf(func(this js.Value, args []js.Value) any {
 		if w.focusCallback != nil {
 			w.focusCallback(w, true)
 		}
 		return nil
 	}))
 
-	js.Global().Call("addEventListener", "blur", js.FuncOf(func(this js.Value, args []js.Value) any {
+	addGlobalEventListener.Invoke("blur", js.FuncOf(func(this js.Value, args []js.Value) any {
 		if w.focusCallback != nil {
 			w.focusCallback(w, false)
 		}
 		return nil
 	}))
 
-	js.Global().Call("addEventListener", "resize", js.FuncOf(func(this js.Value, args []js.Value) any {
+	addGlobalEventListener.Invoke("resize", js.FuncOf(func(this js.Value, args []js.Value) any {
 		// HACK: Go fullscreen?
 		w.devicePixelRatio = js.Global().Get("devicePixelRatio").Float()
 		widthScaled, heightScaled := w.GetSize()
@@ -139,7 +143,9 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		return nil
 	}))
 
-	document.Call("addEventListener", "keydown", js.FuncOf(func(this js.Value, args []js.Value) any {
+	addDocumentEventListener := document.Get("addEventListener").Call("bind", document)
+
+	addDocumentEventListener.Invoke("keydown", js.FuncOf(func(this js.Value, args []js.Value) any {
 		ke := args[0]
 		w.goFullscreenIfRequested()
 
@@ -172,7 +178,7 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		ke.Call("preventDefault")
 		return nil
 	}))
-	document.Call("addEventListener", "keyup", js.FuncOf(func(this js.Value, args []js.Value) any {
+	addDocumentEventListener.Invoke("keyup", js.FuncOf(func(this js.Value, args []js.Value) any {
 		ke := args[0]
 		w.goFullscreenIfRequested()
 
@@ -194,7 +200,7 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		ke.Call("preventDefault")
 		return nil
 	}))
-	document.Call("addEventListener", "mousedown", js.FuncOf(func(this js.Value, args []js.Value) any {
+	addDocumentEventListener.Invoke("mousedown", js.FuncOf(func(this js.Value, args []js.Value) any {
 		me := args[0]
 		w.goFullscreenIfRequested()
 
@@ -211,7 +217,7 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		me.Call("preventDefault")
 		return nil
 	}))
-	document.Call("addEventListener", "mouseup", js.FuncOf(func(this js.Value, args []js.Value) any {
+	addDocumentEventListener.Invoke("mouseup", js.FuncOf(func(this js.Value, args []js.Value) any {
 		me := args[0]
 		w.goFullscreenIfRequested()
 
@@ -228,13 +234,13 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		me.Call("preventDefault")
 		return nil
 	}))
-	document.Call("addEventListener", "contextmenu", js.FuncOf(func(this js.Value, args []js.Value) any {
+	addDocumentEventListener.Invoke("contextmenu", js.FuncOf(func(this js.Value, args []js.Value) any {
 		me := args[0]
 		me.Call("preventDefault")
 		return nil
 	}))
 
-	document.Call("addEventListener", "mousemove", js.FuncOf(func(this js.Value, args []js.Value) any {
+	addDocumentEventListener.Invoke("mousemove", js.FuncOf(func(this js.Value, args []js.Value) any {
 		me := args[0]
 		var movementX, movementY float64
 		if !w.missing.pointerLock {
@@ -257,7 +263,7 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		me.Call("preventDefault")
 		return nil
 	}))
-	document.Call("addEventListener", "wheel", js.FuncOf(func(this js.Value, args []js.Value) any {
+	addDocumentEventListener.Invoke("wheel", js.FuncOf(func(this js.Value, args []js.Value) any {
 		we := args[0]
 
 		deltaX := we.Get("deltaX").Float()
@@ -314,7 +320,7 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		document.AddEventListener("touchmove", false, touchHandler)
 		document.AddEventListener("touchend", false, touchHandler)*/
 
-	document.Call("addEventListener", "beforeUnload", js.FuncOf(func(this js.Value, args []js.Value) any {
+	addDocumentEventListener.Invoke("beforeUnload", js.FuncOf(func(this js.Value, args []js.Value) any {
 		if w.closeCallback != nil {
 			w.closeCallback(w)
 		}
