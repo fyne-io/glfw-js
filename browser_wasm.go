@@ -328,7 +328,8 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 	}))
 
 	// Request first animation frame.
-	js.Global().Call("requestAnimationFrame", animationFrameCallback)
+	w.requestAnimationFrame = js.Global().Get("requestAnimationFrame").Call("bind", js.Global())
+	w.requestAnimationFrame.Invoke(animationFrameCallback)
 
 	return w, nil
 }
@@ -374,6 +375,9 @@ type Window struct {
 	closeCallback           CloseCallback
 
 	touches js.Value // Hacky mouse-emulation-via-touch.
+
+	// Functions to invoke:
+	requestAnimationFrame js.Value
 }
 
 func (w *Window) SetPos(xpos, ypos int) {
@@ -533,7 +537,7 @@ func (w *Window) SetShouldClose(value bool) {
 
 func (w *Window) SwapBuffers() error {
 	<-animationFrameChan
-	js.Global().Call("requestAnimationFrame", animationFrameCallback)
+	w.requestAnimationFrame.Invoke(animationFrameCallback)
 
 	return nil
 }
