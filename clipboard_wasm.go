@@ -12,7 +12,7 @@ var clipboard = js.Global().Get("navigator").Get("clipboard")
 func GetClipboardString() string {
 	text := make(chan string)
 
-	clipboard.Call("readText").Call("then", js.FuncOf(func(this js.Value, p []js.Value) any {
+	read := js.FuncOf(func(this js.Value, p []js.Value) any {
 		content := p[0]
 		if !content.Truthy() {
 			text <- ""
@@ -21,11 +21,16 @@ func GetClipboardString() string {
 
 		text <- content.String()
 		return nil
-	})).Call("catch", js.FuncOf(func(this js.Value, args []js.Value) any {
+	})
+	defer read.Release()
+
+	handleError := js.FuncOf(func(this js.Value, args []js.Value) any {
 		text <- ""
 		return nil
-	}))
+	})
+	defer handleError.Release()
 
+	clipboard.Call("readText").Call("then", read).Call("catch", handleError)
 	return <-text
 }
 
