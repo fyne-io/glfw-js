@@ -46,6 +46,13 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 
 	body.Call("appendChild", canvas)
 
+	// text arrives through a hidden text area, so the browser composes it:
+	// dead keys and input methods
+	text := document.Call("createElement", "textarea")
+	text.Get("style").Set("cssText", "position:fixed;top:0;left:0;opacity:0;pointer-events:none")
+	body.Call("appendChild", text)
+	text.Call("focus")
+
 	// HACK: Go fullscreen /* canvas being sized asynchronously, we are using body the window inner Width/Height */?
 	width := js.Global().Get("innerWidth").Int()
 	height := js.Global().Get("innerHeight").Int()
@@ -152,9 +159,33 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 
 	addDocumentEventListener := document.Get("addEventListener").Call("bind", document)
 
+	typed := func() {
+		if s := text.Get("value").String(); w.charCallback != nil {
+			go func() { // in order
+				for _, r := range s {
+					w.charCallback(w, r)
+				}
+			}()
+		}
+		text.Set("value", "")
+	}
+	text.Call("addEventListener", "input", newJsFuncFrom(func(this js.Value, args []js.Value) any {
+		if !args[0].Get("isComposing").Bool() {
+			typed()
+		}
+		return nil
+	}))
+	text.Call("addEventListener", "compositionend", newJsFuncFrom(func(this js.Value, args []js.Value) any {
+		typed()
+		return nil
+	}))
+
 	addDocumentEventListener.Invoke("keydown", newJsFuncFrom(func(this js.Value, args []js.Value) any {
 		ke := args[0]
 		w.goFullscreenIfRequested()
+		if ke.Get("isComposing").Bool() || ke.Get("keyCode").Int() == 229 || ke.Get("key").String() == "Dead" {
+			return nil // the text area composes it
+		}
 
 		action := Press
 		if ke.Get("repeat").Bool() {
@@ -174,10 +205,11 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 			go w.keyCallback(w, key, -1, action, mods)
 		}
 
-		if w.charCallback != nil && mods < 2 {
-			keyStr := ke.Get("key").String()
-			if len(keyStr) == 1 {
-				keyRune := []rune(keyStr)
+		if keyRune := []rune(ke.Get("key").String()); len(keyRune) == 1 && mods < 2 {
+			if document.Get("activeElement").Equal(text) {
+				return nil // typed in the text area
+			}
+			if w.charCallback != nil {
 				go w.charCallback(w, keyRune[0])
 			}
 		}
@@ -220,6 +252,7 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		if w.mouseButtonCallback != nil {
 			go w.mouseButtonCallback(w, MouseButton(button), Press, 0)
 		}
+		text.Call("focus")
 
 		me.Call("preventDefault")
 		return nil
