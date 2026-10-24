@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"runtime"
+	"sync"
 	"syscall/js"
 )
 
@@ -84,10 +85,12 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 	}
 
 	w := &Window{
+		queued:           make(chan struct{}, 1),
 		canvas:           canvas,
 		context:          context,
 		devicePixelRatio: devicePixelRatio,
 	}
+	go w.runQueue()
 
 	if w.canvas.Get("requestPointerLock").Equal(js.Undefined()) ||
 		document.Get("exitPointerLock").Equal(js.Undefined()) {
@@ -139,13 +142,11 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		canvas.Set("height", heightScaled)
 
 		if w.framebufferSizeCallback != nil {
-			// TODO: Callbacks may be blocking so they need to happen asyncronously. However,
-			//       GLFW API promises the callbacks will occur from one thread (i.e., sequentially), so may want to do that.
 			widthFramebuffer, heightFramebuffer := w.GetFramebufferSize()
-			go w.framebufferSizeCallback(w, widthFramebuffer, heightFramebuffer)
+			w.post(func() { w.framebufferSizeCallback(w, widthFramebuffer, heightFramebuffer) })
 		}
 		if w.sizeCallback != nil {
-			go w.sizeCallback(w, widthScaled, heightScaled)
+			w.post(func() { w.sizeCallback(w, widthScaled, heightScaled) })
 		}
 		return nil
 	}))
@@ -171,14 +172,14 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		w.keys[key] = action
 		mods := toModifierKey(ke)
 		if w.keyCallback != nil {
-			go w.keyCallback(w, key, -1, action, mods)
+			w.post(func() { w.keyCallback(w, key, -1, action, mods) })
 		}
 
 		if w.charCallback != nil && mods < 2 {
 			keyStr := ke.Get("key").String()
 			if len(keyStr) == 1 {
 				keyRune := []rune(keyStr)
-				go w.charCallback(w, keyRune[0])
+				w.post(func() { w.charCallback(w, keyRune[0]) })
 			}
 		}
 
@@ -201,7 +202,7 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		if w.keyCallback != nil {
 			mods := toModifierKey(ke)
 
-			go w.keyCallback(w, key, -1, Release, mods)
+			w.post(func() { w.keyCallback(w, key, -1, Release, mods) })
 		}
 
 		ke.Call("preventDefault")
@@ -218,7 +219,7 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 
 		w.mouseButton[button] = Press
 		if w.mouseButtonCallback != nil {
-			go w.mouseButtonCallback(w, MouseButton(button), Press, 0)
+			w.post(func() { w.mouseButtonCallback(w, MouseButton(button), Press, 0) })
 		}
 
 		me.Call("preventDefault")
@@ -235,7 +236,7 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 
 		w.mouseButton[button] = Release
 		if w.mouseButtonCallback != nil {
-			go w.mouseButtonCallback(w, MouseButton(button), Release, 0)
+			w.post(func() { w.mouseButtonCallback(w, MouseButton(button), Release, 0) })
 		}
 
 		me.Call("preventDefault")
@@ -261,11 +262,12 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		movementY *= w.devicePixelRatio
 
 		w.cursorPos[0], w.cursorPos[1] = me.Get("clientX").Float()*w.devicePixelRatio, me.Get("clientY").Float()*w.devicePixelRatio
+		x, y := w.cursorPos[0], w.cursorPos[1]
 		if w.cursorPosCallback != nil {
-			go w.cursorPosCallback(w, w.cursorPos[0], w.cursorPos[1])
+			w.post(func() { w.cursorPosCallback(w, x, y) })
 		}
 		if w.mouseMovementCallback != nil {
-			go w.mouseMovementCallback(w, w.cursorPos[0], w.cursorPos[1], movementX, movementY)
+			w.post(func() { w.mouseMovementCallback(w, x, y, movementX, movementY) })
 		}
 		me.Call("preventDefault")
 		return nil
@@ -290,7 +292,7 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 		multiplier = 1
 
 		if w.scrollCallback != nil {
-			go w.scrollCallback(w, -deltaX*multiplier, -deltaY*multiplier)
+			w.post(func() { w.scrollCallback(w, -deltaX*multiplier, -deltaY*multiplier) })
 		}
 
 		we.Call("preventDefault")
@@ -310,13 +312,16 @@ func CreateWindow(_, _ int, title string, monitor *Monitor, share *Window) (*Win
 
 				if w.touches != nil && w.touches.Length() > 0 { // This event is a movement only if we previously had > 0 touch points.
 					if w.mouseMovementCallback != nil {
-						go w.mouseMovementCallback(w, t.Get("clientX").Float(), t.Get("clientY").Float(), t.Get("clientX").Float()-w.cursorPos[0], t.Get("clientY").Float()-w.cursorPos[1])
+						x, y := t.Get("clientX").Float(), t.Get("clientY").Float()
+						dx, dy := x-w.cursorPos[0], y-w.cursorPos[1]
+						w.post(func() { w.mouseMovementCallback(w, x, y, dx, dy) })
 					}
 				}
 
 				w.cursorPos[0], w.cursorPos[1] = t.Get("clientX").Float(), t.Get("clientY").Float()
 				if w.cursorPosCallback != nil {
-					go w.cursorPosCallback(w, w.cursorPos[0], w.cursorPos[1])
+					x, y := w.cursorPos[0], w.cursorPos[1]
+					w.post(func() { w.cursorPosCallback(w, x, y) })
 				}
 			}
 			w.touches = touches
@@ -363,6 +368,11 @@ type Window struct {
 	}
 
 	devicePixelRatio float64
+
+	// the page's events' callbacks, waiting their turn (post)
+	queueMu sync.Mutex
+	queue   []func()
+	queued  chan struct{}
 
 	cursorMode  int
 	cursorPos   [2]float64
@@ -1095,4 +1105,35 @@ func (w *Window) SetDropCallback(cbfun DropCallback) (previous DropCallback) {
 
 	// TODO: Handle previous.
 	return nil
+}
+
+// post queues a callback for the page's event: the callbacks run one at a
+// time, in the order the events came, as GLFW promises, on a goroutine of
+// their own (an event handler must not block).
+func (w *Window) post(f func()) {
+	w.queueMu.Lock()
+	w.queue = append(w.queue, f)
+	w.queueMu.Unlock()
+	select {
+	case w.queued <- struct{}{}:
+	default: // the queue's goroutine is already on its way
+	}
+}
+
+// runQueue runs the queued callbacks, oldest first.
+func (w *Window) runQueue() {
+	for range w.queued {
+		for {
+			w.queueMu.Lock()
+			if len(w.queue) == 0 {
+				w.queueMu.Unlock()
+				break
+			}
+			f := w.queue[0]
+			w.queue[0] = nil
+			w.queue = w.queue[1:]
+			w.queueMu.Unlock()
+			f()
+		}
+	}
 }
